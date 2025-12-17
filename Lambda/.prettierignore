@@ -1,0 +1,10 @@
+# Ignore slide decks and generated HTML
+4-Technology-Innovations/**
+**/slides.md
+generate-starfield.html
+starfield.html
+
+# Ignore other workspace-specific generated files
+node_modules
+dist
+build
