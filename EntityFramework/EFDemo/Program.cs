@@ -5,76 +5,124 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EFDemo
 {
-  // Entity: Contact
-  public class Contact
-  {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public List<Address> Addresses { get; set; } = new();
-  }
-
-  // Entity: Address
-  public class Address
-  {
-    public int Id { get; set; }
-    public string Street { get; set; } = string.Empty;
-    public string City { get; set; } = string.Empty;
-    public int ContactId { get; set; }
-    public Contact? Contact { get; set; }
-  }
-
-  // DbContext
-  public class ContactsContext : DbContext
-  {
-    public DbSet<Contact> Contacts => Set<Contact>();
-    public DbSet<Address> Addresses => Set<Address>();
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    // Entity: Contact
+    public class Contact
     {
-      optionsBuilder.UseInMemoryDatabase("ContactsDb");
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<Address> Addresses { get; set; } = new();
     }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    // Entity: Address
+    public class Address
     {
-      modelBuilder.Entity<Contact>()
-          .HasMany(c => c.Addresses)
-          .WithOne(a => a.Contact)
-          .HasForeignKey(a => a.ContactId);
+        public int Id { get; set; }
+        public string Street { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public int ContactId { get; set; }
+        public Contact? Contact { get; set; }
     }
-  }
 
-  class Program
-  {
-    static void Main(string[] args)
+    // DbContext
+    public class ContactsContext : DbContext
     {
-      using var context = new ContactsContext();
-      SeedData(context);
+        public DbSet<Contact> Contacts => Set<Contact>();
+        public DbSet<Address> Addresses => Set<Address>();
 
-      Console.WriteLine("All Contacts:");
-      foreach (var contact in context.Contacts.Include(c => c.Addresses))
-      {
-        Console.WriteLine($"- {contact.Name} (Addresses: {contact.Addresses.Count})");
-        foreach (var addr in contact.Addresses)
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-          Console.WriteLine($"    {addr.Street}, {addr.City}");
+            optionsBuilder.UseInMemoryDatabase("ContactsDb");
         }
-      }
 
-      Console.WriteLine("\nContacts not in 'Springfield':");
-      var springfieldContacts = context.Contacts
-          .Where(c => c.Addresses.Any(a => a.City != "Springfield"))
-          .ToList();
-      foreach (var contact in springfieldContacts)
-      {
-        Console.WriteLine($"- {contact.Name}");
-      }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Contact>()
+                .HasMany(c => c.Addresses)
+                .WithOne(a => a.Contact)
+                .HasForeignKey(a => a.ContactId);
+        }
     }
 
-    static void SeedData(ContactsContext context)
+    class Program
     {
-      if (context.Contacts.Any()) return;
+        static void Main(string[] args)
+        {
+            using var context = new ContactsContext();
+            SeedData(context);
 
-      var contacts = new List<Contact>
+            // Activity 1
+            Console.WriteLine("*** Activity 1 ***");
+            var allContacts = context.Contacts.Include(c => c.Addresses).ToList();
+
+            foreach (var contact in allContacts)
+            {
+                Console.WriteLine($"- {contact.Name} has {contact.Addresses.Count} addresses");
+            }
+
+            // Activity 2
+            Console.WriteLine("*** Activity 2 ***");
+            var springfieldContacts = context.Contacts
+                .Where(c => c.Addresses.Any(a => a.City == "Springfield"))
+                .Select(c => c.Name)
+                .ToList();
+
+            foreach (var name in springfieldContacts)
+            {
+                Console.WriteLine($"- {name}");
+            }
+
+            // Activity 3
+            Console.WriteLine("*** Activity 3 ***");
+            var cities = context.Addresses
+                .GroupBy(a => a.City)
+                .Select(g => new { City = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .ToList();
+
+            foreach (var item in cities)
+            {
+                Console.WriteLine($"{item.City}: {item.Count} addresses");
+            }
+
+            // Activity 4
+            Console.WriteLine("*** Activity 4 ***");
+            var multiAddressContacts = context.Contacts
+                .Where(c => c.Addresses.Count() > 1)
+                .Select(c => c.Name)
+                .ToList();
+
+            foreach (var name in multiAddressContacts)
+            {
+                Console.WriteLine($"- {name}");
+            }
+
+            // Activity 5
+            Console.WriteLine("*** Activity 5 ***");
+
+            var henry2 = context.Contacts.Where(c => c.Name == "Henry Brown").FirstOrDefault();
+
+            var henry = context.Contacts.FirstOrDefault(c => c.Name == "Henry Brown");
+
+            if (henry2 != null)
+            {
+                Console.WriteLine($"Name: {henry2.Name}");
+                Console.WriteLine("Addresses:");
+                foreach (var addr in henry2.Addresses)
+                {
+                    Console.WriteLine($"    * {addr.Street}, {addr.City}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Henry Brown not found");
+            }
+        }
+
+        static void SeedData(ContactsContext context)
+        {
+            if (context.Contacts.Any()) return;
+
+            var contacts = new List<Contact>
             {
                 new Contact
                 {
@@ -189,8 +237,8 @@ namespace EFDemo
                 }
             };
 
-      context.Contacts.AddRange(contacts);
-      context.SaveChanges();
+            context.Contacts.AddRange(contacts);
+            context.SaveChanges();
+        }
     }
-  }
 }
